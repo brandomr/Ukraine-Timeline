@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+<meta charset="utf-8">
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-48594970-1', 'brandonrose.org');
+  ga('send', 'pageview');
+
+</script>
+</head>
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: lightgrey;
+  shape-rendering: crispEdges;
+}
+
+
+
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 2.5px;
+}
+
+
+.title { 
+  font-size: 24px;
+  font-weight: 300;
+  letter-spacing: -2px;
+  margin: .3em .0em -5.0em 2.5em;
+  float: left;
+  display: inline;
+} 
+
+.smalltitle { 
+  font-size: 14px;
+  font-weight: 300;
+  letter-spacing: 0px;
+  margin: 1.3em .0em -1.0em 6.0em;
+  float: left;
+  display: inline;
+} 
+
+#onhovernumber { 
+  font-size: 14px;
+  font-weight: 300;
+  letter-spacing: 0px;
+  margin: 1.3em .0em -1.0em .5em;
+  float: left;
+  display: inline;
+} 
+
+svg {
+	float: left;
+	}
+
+div {
+	width: 960px;
+	}
+
+#tooltipbox {
+	height:50px;
+	width: 960px;
+	margin: .0em .0em -8.0em 0.0em;
+	padding: 5.0em .0em .5em 8.0em;
+    float: left;
+    display: inline;
+	}
+
+.tooltip {
+  position: absolute;
+  width: 800px;
+  height: 50px;
+  pointer-events: none;
+  margin: .0em .0em .0em 0.0em;  
+}
+
+.hovertip {
+  position: relative;
+  width: 100px;
+  height: 50px;
+  pointer-events: none;
+  margin: .0em .0em .0em 0.0em; 
+}
+
+.topcontainer {
+  margin: 1em auto 4em auto;
+	}
+	
+a {
+  color: steelblue;
+  font: 14px sans-serif;
+  margin: .0em .0em .0em 4.5em;
+}
+
+a:not(:hover) {
+  text-decoration: none;
+}
+
+
+
+
+</style>
+<body>
+
+<div id="topcontainer">
+</br><a href="http://brandonrose.org">Home</a></br></br>
+</div>
+<div id="timeline">
+	<h1 class="title">Timeline of Ukraine Crisis</h1>
+	<div id ="tooltipbox"></div>
+</div>
+<div id="MICEX">
+	<h1 class="smalltitle">MICEX % Change:</h1>
+	<h1 id="onhovernumber"></h1>
+</div>
+<div id="SP">
+	<h1 class="smalltitle">S&P 500 % Change: </h1>
+	<h1 id="onhovernumber"></h1>
+</div>
+<div id="Oil">
+	<h1 class="smalltitle">UBS Crude Oil % Change (ETF): </h1>
+	<h1 id="onhovernumber"></h1>
+</div>
+
+<script type="text/javascript" src="d3/d3.v3.js"></script>
+
+<script>
+
+var margin = {top: 20, right: 20, bottom: 20, left: 75},
+    width = 960 - margin.left - margin.right,
+    height = 150 - margin.top - margin.bottom;
+
+var format = d3.time.format("%m/%d/%Y").parse;    
+var formatPercent = d3.format(".0%"); 
+
+var shortdate = d3.time.format("%x");  
+var dateclass = d3.time.format("%m.%d.%y");  
+
+
+var x = d3.time.scale()
+    .range([0, width]);
+
+var y = d3.scale.linear()
+    .range([height, 0]);
+
+var colorchange = function (d) { if (d > 0) { return "green" ; } else { return "red" ; };}
+
+
+d3.csv("ukraine_timeline.csv", function(error, data) {
+  data.forEach(function(d) {
+  	d.date = format(d.Date);
+	d.MICEXclose = +d.MICEX_Close;
+	d.MICEXchange = +d.Perc_MICEX_Change;
+	d.SPclose = +d.SP_500_Close;
+	d.SPchange = +d.Perc_SP_Change;
+	d.Oilclose = +d.Oil_UCO_Close;
+	d.Oilchange = +d.Perc_Oil_Change;
+	d.event = d.BBC_Event;
+  });
+
+var oilscale = d3.scale.linear()
+    .domain(d3.extent(data, function(d) { return d.Oilchange; }))
+    .range([height, 0]);
+
+console.log(data);
+
+//timeline//
+var timeradius = function (d) {
+	if (d.BBC_Event = null) 
+	{ return 0;}
+	else { return 3;};};
+
+console.log(timeradius);
+
+var TIMExAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom")
+    .innerTickSize("3")
+    .outerTickSize("0")
+    .tickPadding("9");
+    
+    
+var TIMEXyAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left")
+    .tickFormat(formatPercent);
+
+var TIMEXline = d3.svg.line()
+    .x(function(d) { return x(d.date); })
+    .y(function(d) { return y(d.BBC_Event); })
+    
+//var TIMEheader = d3.select("#timeline").append("H1")
+//	.text("Timeline of Ukraine Crisis")
+//	.attr("class", "title");
+
+var TIMEsvg = d3.select("#timeline").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", 75 + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+  y.domain([-0.1, 0.1]);
+  
+
+  TIMEsvg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height/2 + ")")
+      .call(TIMExAxis);
+
+  
+var tooltip = d3.select("#tooltipbox").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+  
+var MICEXhover = d3.select("#MICEX").append("div")
+    .attr("class", "hovertip")
+    .style("opacity", 0); 
+    
+var MICEXheader = d3.select("#MICEX").select("#onhovernumber")
+var SPheader = d3.select("#SP").select("#onhovernumber")
+var Oilheader = d3.select("#Oil").select("#onhovernumber")
+
+
+
+var SPhover = d3.select("#SP").append("div")
+    .attr("class", "hovertip")
+    .style("opacity", 0); 
+
+var Oilhover = d3.select("#Oil").append("div")
+    .attr("class", "hovertip")
+    .style("opacity", 0); 
+  
+  TIMEsvg.selectAll(".dot")
+      .data(data)
+      .enter().append("circle")
+	  .attr("class", function(d) { return dateclass(d.date);})
+	  .attr("id", "timedot")
+	  .attr("r", function(d) { return timeradius(d.BBC_Event);})
+      .attr("cx", function(d) { return x(d.date); })
+      .attr("cy", height/2) 
+      .attr("fill", "steelblue")
+      .attr("stroke", "#d3d3d3")
+      .attr("stroke-width", "0px")
+      .style("display", function(d) { return d.BBC_Event == "" ? "none" : null; })
+       .on("mouseover", function(d){
+    
+   		 tooltip.transition()
+               .duration(200)
+               .style("opacity", .9);
+          tooltip.html("<strong>" + shortdate(d.date) + ": </strong>" + d.BBC_Event)
+               //.style("left", (d3.event.pageX - 50) + "px")
+               //.style("top", (d3.event.pageY + 30) + "px")
+               .style("font-size", "10px")
+
+   		 MICEXheader.transition()
+               .duration(200)
+          MICEXheader.html(" " + formatPercent(d.MICEXchange))
+               .style("opacity", .9)
+               .style("color", function() { return colorchange(d.MICEXchange);});
+
+
+   		 SPheader.transition()
+               .duration(200)
+          SPheader.html(" " + formatPercent(d.SPchange))
+               .style("opacity", .9)
+               .style("color", function() { return colorchange(d.SPchange);});
+
+
+   		 Oilheader.transition()
+               .duration(200)
+          Oilheader.html(" " + formatPercent(d.Oilchange))
+               .style("opacity", .9)
+               .style("color", function() { return colorchange(d.Oilchange);});
+
+
+   		 MICEXhover.transition()
+               .duration(200)
+               .style("opacity", .9);
+          MICEXhover.html("<p align = right><strong>" + formatPercent(d.MICEXchange) + "</strong></p>")
+  			  .style("left", this.getAttribute("cx") + "px")     
+              .style("top", this.getAttribute("cy") + "px")
+              .style("font-size", "10px") 
+              .style("color", function() { return colorchange(d.MICEXchange);})
+
+   		 SPhover.transition()
+               .duration(200)
+               .style("opacity", .9);
+          SPhover.html("<p align = right><strong>" + formatPercent(d.SPchange) + "</strong></p>")
+  			  .style("left", this.getAttribute("cx") + "px")     
+              .style("top", this.getAttribute("cy") + "px")
+              .style("font-size", "10px") 
+              .style("color", function() { return colorchange(d.SPchange);})
+   		 
+   		 Oilhover.transition()
+               .duration(200)
+               .style("opacity", .9);
+          Oilhover.html("<p align = right><strong>" + formatPercent(d.Oilchange) + "</strong></p>")
+  			  .style("left", this.getAttribute("cx") + "px")     
+              .style("top", this.getAttribute("cy") + "px")
+              .style("font-size", "10px") 
+              .style("color", function() { return colorchange(d.Oilchange);}) 
+    
+        var thisID = this.getAttribute("id");
+        var thisdate = this.getAttribute("class");
+        
+    		d3.selectAll('circle')      	
+        	.attr("r", function () {
+        		return (this.getAttribute("class") === thisdate) ? 3 : (this.getAttribute("id") === "timedot") ? 3 : 15;
+    			})
+            .attr("fill-opacity", function () {
+        		return (this.getAttribute("class") === thisdate) ? 1 : (this.getAttribute("id") === "timedot") ? 1 : 0;
+    			})
+        	.attr("fill", function () {
+        		return (this.getAttribute("class") === thisdate) ? "black" : "steelblue";
+    			})
+        	;})
+        
+
+        .on("mouseout", function() {
+
+       
+     			tooltip.transition()
+               .duration(500)
+               .style("opacity", 0);
+  
+        
+                MICEXheader.transition()
+               .duration(200)
+               .style("opacity", 0);
+                
+         
+                SPheader.transition()
+               .duration(200)
+               .style("opacity", 0);
+                
+        
+                Oilheader.transition()
+               .duration(200)
+               .style("opacity", 0);
+                
+ 
+               
+                MICEXhover.transition()
+               .duration(500)
+               .style("opacity", 0);
+               
+                SPhover.transition()
+               .duration(500)
+               .style("opacity", 0);
+        
+                Oilhover.transition()
+               .duration(500)
+               .style("opacity", 0);
+       
+        var thisID = this.getAttribute("id");
+        var thisdate = this.getAttribute("class");
+    
+    		d3.selectAll('circle')      	
+        	.attr("r", "3px")
+        	.attr("fill", "steelblue")
+        	.attr("fill-opacity", function () {
+        		return (this.getAttribute("id") === thisID) ? 1 : 0;
+    			})
+        	;});
+
+
+
+
+
+//MICEX//
+
+var MICEXxAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom")
+    .innerTickSize("3")
+    .outerTickSize("0")
+    .tickPadding("9");
+    
+    
+var MICEXyAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left")
+    .tickFormat(formatPercent)
+    .ticks("5")
+    .innerTickSize("3")
+    .outerTickSize("0")
+    .tickPadding("3");
+
+var MICEXline = d3.svg.line()
+    .x(function(d) { return x(d.date); })
+    .y(function(d) { return y(d.MICEXchange); });
+
+var MICEXsvg = d3.select("#MICEX").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+  y.domain([-0.1, 0.1]);
+
+  MICEXsvg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height/2 + ")")
+      .call(MICEXxAxis);
+
+  MICEXsvg.append("g")
+      .attr("class", "y axis")
+      .call(MICEXyAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -40)
+      .attr("x", -15)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("MICEX % Change");
+
+ MICEXsvg.append("path")
+    .datum(data)
+    .attr("class", "line")
+    .attr("d", MICEXline);
+    
+ MICEXsvg.selectAll(".point")
+        .data(data)
+        .enter().append("circle")
+ 	    .attr("r", "15px")
+ 		.attr("cx", function(d) { return x(d.date); })
+        .attr("cy", function(d) { return y(d.MICEXchange); })
+        .attr("fill-opacity", "0")
+	  .attr("class", function(d) { return dateclass(d.date);})
+        .attr("id", "linedot")
+        .on("mouseover", function(d){
+
+        var thisID = this.getAttribute("id");
+        var thisdate = this.getAttribute("class");
+
+   		 tooltip.transition()
+               .duration(200)
+               .style("opacity", .9);
+          tooltip.html("<strong>" + shortdate(d.date) + ": </strong>" + d.BBC_Event)
+               //.style("left", (d3.event.pageX - 50) + "px")
+               //.style("top", (d3.event.pageY + 30) + "px")
+               .style("font-size", "10px")
+
+   		 MICEXheader.transition()
+               .duration(200)
+          MICEXheader.html(" " + formatPercent(d.MICEXchange))
+               .style("opacity", .9)
+               .style("color", function() { return colorchange(d.MICEXchange);});
+
+
+   		 SPheader.transition()
+               .duration(200)
+          SPheader.html(" " + formatPercent(d.SPchange))
+               .style("opacity", .9)
+               .style("color", function() { return colorchange(d.SPchange);});
+
+
+   		 Oilheader.transition()
+               .duration(200)
+          Oilheader.html(" " + formatPercent(d.Oilchange))
+               .style("opacity", .9)
+               .style("color", function() { return colorchange(d.Oilchange);});
+
+
+   		 MICEXhover.transition()
+               .duration(200)
+               .style("opacity", .9);
+          MICEXhover.html("<p align = right><strong>" + formatPercent(d.MICEXchange) + "</strong></p>")
+  			  .style("left", this.getAttribute("cx") + "px")     
+              .style("top", this.getAttribute("cy") + "px")
+              .style("font-size", "10px") 
+              .style("color", function() { return colorchange(d.MICEXchange);})
+
+   		 SPhover.transition()
+               .duration(200)
+               .style("opacity", .9);
+          SPhover.html("<p align = right><strong>" + formatPercent(d.SPchange) + "</strong></p>")
+  			  .style("left", this.getAttribute("cx") + "px")     
+              .style("top", this.getAttribute("cy") + "px")
+              .style("font-size", "10px") 
+              .style("color", function() { return colorchange(d.SPchange);})
+   		 
+   		 Oilhover.transition()
+               .duration(200)
+               .style("opacity", .9);
+          Oilhover.html("<p align = right><strong>" + formatPercent(d.Oilchange) + "</strong></p>")
+  			  .style("left", this.getAttribute("cx") + "px")     
+			  .style("top", function() { return oilscale(d.Oilchange) ;})
+                //var tooltipscale = y.domain(d3.extent(data, function(d) { return d.Oilchange; }));
+              // { return 10 ; } + "px")
+              //.style("top", this.getAttribute("cy") + "px")
+              .style("font-size", "10px") 
+              .style("color", function() { return colorchange(d.Oilchange);})
+    
+        var thisID = this.getAttribute("id");
+        var thisdate = this.getAttribute("class");
+        
+    		d3.selectAll('circle')      	
+        	.attr("r", function () {
+        		return (this.getAttribute("class") === thisdate) ? 3 : (this.getAttribute("id") === "timedot") ? 3 : 15;
+    			})
+            .attr("fill-opacity", function () {
+        		return (this.getAttribute("class") === thisdate) ? 1 : (this.getAttribute("id") === "timedot") ? 1 : 0;
+    			})
+        	.attr("fill", function () {
+        		return (this.getAttribute("class") === thisdate) ? "black" : "steelblue";
+    			})
+        	;})
+        	
+        .on("mouseout", function(d) {
+        
+                tooltip.transition()
+               .duration(500)
+               .style("opacity", 0);
+        
+                MICEXheader.transition()
+               .duration(200)
+               .style("opacity", 0);
+                
+         
+                SPheader.transition()
+               .duration(200)
+               .style("opacity", 0);
+                
+        
+                Oilheader.transition()
+               .duration(200)
+               .style("opacity", 0);
+               
+                              
+                MICEXhover.transition()
+               .duration(500)
+               .style("opacity", 0);
+               
+                SPhover.transition()
+               .duration(500)
+               .style("opacity", 0);
+        
+                Oilhover.transition()
+               .duration(500)
+               .style("opacity", 0);
+        
+        var thisID = this.getAttribute("id");
+        var thisdate = this.getAttribute("class");
+    
+    		d3.selectAll('circle')      	
+        	.attr("r", "3px")
+        	.attr("fill", "steelblue")
+        	.attr("fill-opacity", function () {
+        		return (this.getAttribute("id") === thisID) ? 0 : 1;
+    			})
+        	;});
+
+        
+        
+
+
+//S&P 500//
+
+var SPxAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom")
+    .innerTickSize("3")
+    .outerTickSize("0")
+    .tickPadding("9");
+    
+var SPyAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left")
+    .tickFormat(formatPercent)
+    .ticks("4")
+    .innerTickSize("3")
+    .outerTickSize("0")
+    .tickPadding("3");
+
+var SPline = d3.svg.line()
+    .x(function(d) { return x(d.date); })
+    .y(function(d) { return y(d.SPchange); });
+
+var SPsvg = d3.select("#SP").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+  y.domain([-0.015, 0.015]);
+
+  SPsvg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height/2 + ")")
+      .call(SPxAxis);
+
+  SPsvg.append("g")
+      .attr("class", "y axis")
+      .call(SPyAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -40)
+      .attr("x", -15)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("S&P 500 % Change");
+
+  SPsvg.append("path")
+      .datum(data)
+      .attr("class", "line")
+      .attr("d", SPline);
+    
+    SPsvg.selectAll(".point")
+        .data(data)
+        .enter().append("circle")
+ 	    .attr("r", "1px")
+ 		.attr("cx", function(d) { return x(d.date); })
+        .attr("cy", function(d) { return y(d.SPchange); })
+	  .attr("class", function(d) { return dateclass(d.date);})
+        .attr("id", "linedot")
+         .on("mouseover", function(d){
+    
+   		 tooltip.transition()
+               .duration(200)
+               .style("opacity", .9);
+          tooltip.html("<strong>" + shortdate(d.date) + ": </strong>" + d.BBC_Event)
+               //.style("left", (d3.event.pageX - 50) + "px")
+               //.style("top", (d3.event.pageY + 30) + "px")
+               .style("font-size", "10px")
+ 
+ 
+    		 MICEXheader.transition()
+               .duration(200)
+          MICEXheader.html(" " + formatPercent(d.MICEXchange))
+               .style("opacity", .9)
+               .style("color", function() { return colorchange(d.MICEXchange);});
+
+
+   		 SPheader.transition()
+               .duration(200)
+          SPheader.html(" " + formatPercent(d.SPchange))
+               .style("opacity", .9)
+               .style("color", function() { return colorchange(d.SPchange);});
+
+
+   		 Oilheader.transition()
+               .duration(200)
+          Oilheader.html(" " + formatPercent(d.Oilchange))
+               .style("opacity", .9)
+               .style("color", function() { return colorchange(d.Oilchange);});
+ 
+ 
+   		 MICEXhover.transition()
+               .duration(200)
+               .style("opacity", .9);
+          MICEXhover.html("<p align = right><strong>" + formatPercent(d.MICEXchange) + "</strong></p>")
+  			  .style("left", this.getAttribute("cx") + "px")     
+              .style("top", this.getAttribute("cy") + "px")
+              .style("font-size", "10px") 
+              .style("color", function() { return colorchange(d.MICEXchange);})
+
+   		 SPhover.transition()
+               .duration(200)
+               .style("opacity", .9);
+          SPhover.html("<p align = right><strong>" + formatPercent(d.SPchange) + "</strong></p>")
+  			  .style("left", this.getAttribute("cx") + "px")     
+              .style("top", this.getAttribute("cy") + "px")
+              .style("font-size", "10px") 
+              .style("color", function() { return colorchange(d.SPchange);})
+   		 
+   		 Oilhover.transition()
+               .duration(200)
+               .style("opacity", .9);
+          Oilhover.html("<p align = right><strong>" + formatPercent(d.Oilchange) + "</strong></p>")
+  			  .style("left", this.getAttribute("cx") + "px")     
+              .style("top", this.getAttribute("cy") + "px")
+              .style("font-size", "10px") 
+              .style("color", function() { return colorchange(d.Oilchange);})  
+        
+        var thisID = this.getAttribute("id");
+        var thisdate = this.getAttribute("class");
+        
+    		d3.selectAll('circle')      	
+        	.attr("r", function () {
+        		return (this.getAttribute("class") === thisdate) ? 3 : (this.getAttribute("id") === "timedot") ? 3 : 15;
+    			})
+            .attr("fill-opacity", function () {
+        		return (this.getAttribute("class") === thisdate) ? 1 : (this.getAttribute("id") === "timedot") ? 1 : 0;
+    			})
+        	.attr("fill", function () {
+        		return (this.getAttribute("class") === thisdate) ? "black" : "steelblue";
+    			})
+        	;})
+        	
+        .on("mouseout", function(d) {
+   			  
+   			    tooltip.transition()
+               .duration(500)
+               .style("opacity", 0);
+        
+                MICEXheader.transition()
+               .duration(200)
+               .style("opacity", 0);
+                
+         
+                SPheader.transition()
+               .duration(200)
+               .style("opacity", 0);
+                
+        
+                Oilheader.transition()
+               .duration(200)
+               .style("opacity", 0);
+                              
+                MICEXhover.transition()
+               .duration(500)
+               .style("opacity", 0);
+               
+                SPhover.transition()
+               .duration(500)
+               .style("opacity", 0);
+        
+                Oilhover.transition()
+               .duration(500)
+               .style("opacity", 0);
+        
+        var thisID = this.getAttribute("id");
+        var thisdate = this.getAttribute("class");
+    
+    		d3.selectAll('circle')      	
+        	.attr("r", "3px")
+        	.attr("fill", "steelblue")
+        	.attr("fill-opacity", function () {
+        		return (this.getAttribute("id") === thisID) ? 0 : 1;
+    			})
+        	;});
+
+
+
+
+//Oil//
+
+var OilxAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom")
+    .innerTickSize("3")
+    .outerTickSize("0")
+    .tickPadding("9");
+    
+    
+var OilyAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left")
+    .tickFormat(formatPercent)
+    .ticks("5")
+    .innerTickSize("3")
+    .outerTickSize("0")
+    .tickPadding("3");
+
+var Oilline = d3.svg.line()
+    .x(function(d) { return x(d.date); })
+    .y(function(d) { return y(d.Oilchange); });
+
+var Oilsvg = d3.select("#Oil").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+  y.domain(d3.extent(data, function(d) { return d.Oilchange; }));
+
+  Oilsvg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height/2 + ")")
+      .call(OilxAxis);
+
+  Oilsvg.append("g")
+      .attr("class", "y axis")
+      .call(SPyAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -40)
+      .attr("x", -15)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Oil ETF % Change");
+
+  Oilsvg.append("path")
+      .datum(data)
+      .attr("class", "line")
+      .attr("d", Oilline);
+  
+  Oilsvg.selectAll(".point")
+        .data(data)
+        .enter().append("circle")
+ 	    .attr("r", "1px")
+ 		.attr("cx", function(d) { return x(d.date); })
+        .attr("cy", function(d) { return y(d.Oilchange); })
+	  .attr("class", function(d) { return dateclass(d.date);})
+        .attr("id", "linedot")
+         .on("mouseover", function(d){
+        
+    
+   		 tooltip.transition()
+               .duration(200)
+               .style("opacity", .9);
+          tooltip.html("<strong>" + shortdate(d.date) + ": </strong>" + d.BBC_Event)
+               //.style("left", (d3.event.pageX - 50) + "px")
+               //.style("top", (d3.event.pageY + 30) + "px")
+               .style("font-size", "10px")
+
+   		 MICEXheader.transition()
+               .duration(200)
+          MICEXheader.html(" " + formatPercent(d.MICEXchange))
+               .style("opacity", .9)
+               .style("color", function() { return colorchange(d.MICEXchange);});
+
+
+   		 SPheader.transition()
+               .duration(200)
+          SPheader.html(" " + formatPercent(d.SPchange))
+               .style("opacity", .9)
+               .style("color", function() { return colorchange(d.SPchange);});
+
+
+   		 Oilheader.transition()
+               .duration(200)
+          Oilheader.html(" " + formatPercent(d.Oilchange))
+               .style("opacity", .9)
+               .style("color", function() { return colorchange(d.Oilchange);});
+
+
+
+   		 MICEXhover.transition()
+               .duration(200)
+               .style("opacity", .9);
+          MICEXhover.html("<p align = right><strong>" + formatPercent(d.MICEXchange) + "</strong></p>")
+  			  .style("left", this.getAttribute("cx") + "px")     
+              .style("top", this.getAttribute("cy") + "px")
+              .style("font-size", "10px") 
+              .style("color", function() { return colorchange(d.MICEXchange);})
+
+   		 SPhover.transition()
+               .duration(200)
+               .style("opacity", .9);
+          SPhover.html("<p align = right><strong>" + formatPercent(d.SPchange) + "</strong></p>")
+  			  .style("left", this.getAttribute("cx") + "px")     
+              .style("top", this.getAttribute("cy") + "px")
+              .style("font-size", "10px") 
+              .style("color", function() { return colorchange(d.SPchange);})
+   		 
+   		 Oilhover.transition()
+               .duration(200)
+               .style("opacity", .9);
+          Oilhover.html("<p align = right><strong>" + formatPercent(d.Oilchange) + "</strong></p>")
+  			  .style("left", this.getAttribute("cx") + "px")     
+              .style("top", this.getAttribute("cy") + "px")
+              .style("font-size", "10px") 
+              .style("color", function() { return colorchange(d.Oilchange);})
+        
+        var thisID = this.getAttribute("id");
+        var thisdate = this.getAttribute("class");
+        
+    		d3.selectAll('circle')      	
+        	.attr("r", function () {
+        		return (this.getAttribute("class") === thisdate) ? 3 : (this.getAttribute("id") === "timedot") ? 3 : 15;
+    			})
+            .attr("fill-opacity", function () {
+        		return (this.getAttribute("class") === thisdate) ? 1 : (this.getAttribute("id") === "timedot") ? 1 : 0;
+    			})
+        	.attr("fill", function () {
+        		return (this.getAttribute("class") === thisdate) ? "black" : "steelblue";
+    			})
+        	;})
+        	
+        .on("mouseout", function(d) {
+   			  
+   			    tooltip.transition()
+               .duration(500)
+               .style("opacity", 0);
+
+        
+                MICEXheader.transition()
+               .duration(200)
+               .style("opacity", 0);
+                
+         
+                SPheader.transition()
+               .duration(200)
+               .style("opacity", 0);
+                
+        
+                Oilheader.transition()
+               .duration(200)
+               .style("opacity", 0);
+               
+                MICEXhover.transition()
+               .duration(500)
+               .style("opacity", 0);
+               
+                SPhover.transition()
+               .duration(500)
+               .style("opacity", 0);
+        
+                Oilhover.transition()
+               .duration(500)
+               .style("opacity", 0);
+        
+        var thisID = this.getAttribute("id");
+        var thisdate = this.getAttribute("class");
+    
+    		d3.selectAll('circle')      	
+        	.attr("r", "3px")
+        	.attr("fill", "steelblue")
+        	.attr("fill-opacity", function () {
+        		return (this.getAttribute("id") === thisID) ? 0 : 1;
+    			})
+        	;});
+
+      
+}); //bracket close for data call
+
+
+
+
+</script>
+
+
+
+
+</html>
